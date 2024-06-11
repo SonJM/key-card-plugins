@@ -1,0 +1,11 @@
+name: hxxnivers-key-card
+version: 1.0
+main: org.blisle.hxxniverskeycard.Hxxnivers_key_card
+api-version: '1.20'
+commands:
+  키카드:
+    description: 키카드 관련 명령어
+    usage: /키카드 [생성|철문|등록|아이템설정] <args>
+  태그:
+    description: 태그 관련 명령어
+    usage: /태그 [생성|등록|등록취소|설정] <args>
