@@ -1,19 +1,19 @@
 package org.blisle.hxxniverskeycard.event;
 
-import org.blisle.hxxniverskeycard.service.RoleService;
+import org.blisle.hxxniverskeycard.connection.DatabaseManager;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 
 public class PlayerJoinListener implements Listener {
-    private final RoleService roleService;
+    private final DatabaseManager databaseManager;
 
-    public PlayerJoinListener(RoleService roleService) {
-        this.roleService = roleService;
+    public PlayerJoinListener(DatabaseManager databaseManager) {
+        this.databaseManager = databaseManager;
     }
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
-        roleService.addPlayer(event.getPlayer().getUniqueId(), event.getPlayer().getName());
+        databaseManager.insertPlayer(event.getPlayer().getUniqueId(), event.getPlayer().getName());
     }
 }

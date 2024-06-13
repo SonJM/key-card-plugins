@@ -2,20 +2,24 @@ package org.blisle.hxxniverskeycard.commands;
 
 import de.tr7zw.changeme.nbtapi.NBTItem;
 import net.kyori.adventure.text.Component;
-import org.blisle.hxxniverskeycard.connection.SQLiteDatabaseManager;
+import org.blisle.hxxniverskeycard.connection.DatabaseManager;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.jetbrains.annotations.NotNull;
 
-public class KeycardCommand implements CommandExecutor {
-    private final SQLiteDatabaseManager databaseManager;
+import java.sql.SQLException;
 
-    public KeycardCommand(SQLiteDatabaseManager databaseManager) {
+public class KeycardCommand implements CommandExecutor {
+    private final DatabaseManager databaseManager;
+
+    public KeycardCommand(DatabaseManager databaseManager) {
         this.databaseManager = databaseManager;
     }
 
@@ -41,7 +45,15 @@ public class KeycardCommand implements CommandExecutor {
                 }
                 String name = strings[1];
                 String tag = strings[2];
-                player.sendMessage("키카드 " + name + " (태그: " + tag + ") 생성됨.");
+                try {
+                    if(databaseManager.keyCardExists(name, tag)) player.sendMessage("이미 등록되어있는 키카드입니다.");
+                    else {
+                        databaseManager.insertKeyCard(name, tag);
+                        player.sendMessage("키카드 " + name + " (태그: " + tag + ") 생성됨.");
+                    }
+                } catch (SQLException e) {
+                    player.sendMessage(e.getMessage());
+                }
                 break;
 
             case "철문":
@@ -59,6 +71,8 @@ public class KeycardCommand implements CommandExecutor {
                 ItemMeta meta = itemInHand.getItemMeta();
                 if (meta != null) {
                     meta.displayName(Component.text(permission + " 문"));
+                    meta.addEnchant(Enchantment.LUCK, 1, true);
+                    meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
                 }
                 NBTItem nbtItem = new NBTItem(itemInHand);
                 nbtItem.getItem().setItemMeta(meta);
@@ -81,7 +95,16 @@ public class KeycardCommand implements CommandExecutor {
                     player.sendMessage("손에 물건을 들고 명령어를 입력해 주세요.");
                     return true;
                 }
+
+                ItemMeta meta2 = itemInHand2.getItemMeta();
+                if (meta2 != null) {
+                    meta2.displayName(Component.text(permission2 + " 키카드"));
+                    meta2.addEnchant(Enchantment.LUCK, 1, true);
+                    meta2.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+                }
+
                 NBTItem nbtItem2 = new NBTItem(itemInHand2);
+                nbtItem2.getItem().setItemMeta(meta2);
                 nbtItem2.setString("PermissionRegister", "true");
                 nbtItem2.setString("Permission", permission2);
                 nbtItem2.applyNBT(itemInHand2);

@@ -2,7 +2,7 @@ package org.blisle.hxxniverskeycard.commands;
 
 import de.tr7zw.changeme.nbtapi.NBTItem;
 import net.kyori.adventure.text.Component;
-import org.blisle.hxxniverskeycard.connection.SQLiteDatabaseManager;
+import org.blisle.hxxniverskeycard.connection.DatabaseManager;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -17,9 +17,9 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 public class TagCommand implements CommandExecutor {
-    private final SQLiteDatabaseManager databaseManager;
+    private final DatabaseManager databaseManager;
 
-    public TagCommand(SQLiteDatabaseManager databaseManager) {
+    public TagCommand(DatabaseManager databaseManager) {
         this.databaseManager = databaseManager;
     }
 
@@ -42,19 +42,15 @@ public class TagCommand implements CommandExecutor {
                     return true;
                 }
                 String role = strings[1];
-                String insertRole = "INSERT INTO role (name) SELECT ? WHERE NOT EXISTS (" +
-                        "SELECT 1 FROM role " +
-                        "WHERE name = ?" +
-                        ");";
-                try (Connection connection = databaseManager.connect();
-                     PreparedStatement statement = connection.prepareStatement(insertRole)) {
-                    statement.setString(1, role);
-                    statement.setString(2, role);
-                    statement.executeUpdate();
+                try {
+                    if(databaseManager.roleExists(role)) player.sendMessage("이미 등록되어있는 역할입니다.");
+                    else {
+                        databaseManager.insertRole(role);
+                        player.sendMessage(role + " 역할 생성됨.");
+                    }
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
                 }
-                player.sendMessage("역할 " + role + " 생성됨.");
                 break;
 
             case "등록":
@@ -79,7 +75,6 @@ public class TagCommand implements CommandExecutor {
                 player.sendMessage(registerRole + " 역할 등록 아이템 지급");
                 break;
 
-                //Todo: 등록취소에 대한 로직 이해를 다시 해봐야할듯
             case "등록취소":
                 if (strings.length != 1) {
                     player.sendMessage("명령어 사용법: /태그 등록취소");

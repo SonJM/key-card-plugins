@@ -1,8 +1,8 @@
 package org.blisle.hxxniverskeycard.event;
 
 import de.tr7zw.changeme.nbtapi.NBTItem;
-import org.blisle.hxxniverskeycard.Hxxnivers_key_card;
-import org.blisle.hxxniverskeycard.connection.SQLiteDatabaseManager;
+import org.blisle.hxxniverskeycard.HxxniversKeyCard;
+import org.blisle.hxxniverskeycard.connection.DatabaseManager;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -19,13 +19,15 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.metadata.MetadataValue;
 
+import java.sql.SQLException;
+
 public class DoorEventListener implements Listener {
-    private final Hxxnivers_key_card plugin;
-    private final SQLiteDatabaseManager databaseManager;
+    private final HxxniversKeyCard plugin;
+    private final DatabaseManager databaseManager;
     private long lastEventTime = 0;
     private static final long EVENT_COOLDOWN = 500;
 
-    public DoorEventListener(Hxxnivers_key_card plugin, SQLiteDatabaseManager databaseManager) {
+    public DoorEventListener(HxxniversKeyCard plugin, DatabaseManager databaseManager) {
         this.plugin = plugin;
         this.databaseManager = databaseManager;
     }
@@ -75,8 +77,19 @@ public class DoorEventListener implements Listener {
                 NBTItem nbtItem = new NBTItem(itemInHand);
                 if (itemInHand.getType() != Material.IRON_DOOR && nbtItem.hasKey("Permission")) {
                     String permission = nbtItem.getString("Permission");
+                    // Get the door name from metadata
+                    String doorName = null;
                     for (MetadataValue value : block.getMetadata("Permission")) {
-                        if (value.asString().equals(permission)) {
+                        doorName = value.asString();
+                        break;
+                    }
+                    if (doorName == null) {
+                        event.getPlayer().sendMessage("문에 이름이 설정되어 있지 않습니다.");
+                        return;
+                    }
+
+                    try {
+                        if (databaseManager.hasPermission(doorName, permission)) {
                             BlockState state = block.getState();
                             if (state.getBlockData() instanceof Openable) {
                                 Openable openable = (Openable) state.getBlockData();
@@ -84,11 +97,14 @@ public class DoorEventListener implements Listener {
                                 state.setBlockData(openable);
                                 state.update();
                                 event.getPlayer().sendMessage("문이 열렸습니다!");
-                                return;
                             }
+                        } else {
+                            event.getPlayer().sendMessage("키카드가 맞지 않습니다.");
                         }
+                    } catch (SQLException e) {
+                        event.getPlayer().sendMessage("문을 여는 중 오류가 발생했습니다.");
+                        e.printStackTrace();
                     }
-                    event.getPlayer().sendMessage("키카드가 맞지 않습니다.");
                 }
             }
         }

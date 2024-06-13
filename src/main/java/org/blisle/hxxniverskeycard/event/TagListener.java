@@ -1,7 +1,7 @@
 package org.blisle.hxxniverskeycard.event;
 
 import de.tr7zw.changeme.nbtapi.NBTItem;
-import org.blisle.hxxniverskeycard.connection.SQLiteDatabaseManager;
+import org.blisle.hxxniverskeycard.connection.DatabaseManager;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -14,11 +14,11 @@ import java.sql.SQLException;
 
 
 public class TagListener implements Listener {
-    private final SQLiteDatabaseManager databaseManager;
+    private final DatabaseManager databaseManager;
     private long lastEventTime = 0;
     private static final long EVENT_COOLDOWN = 500;
 
-    public TagListener(SQLiteDatabaseManager databaseManager) {
+    public TagListener(DatabaseManager databaseManager) {
         this.databaseManager = databaseManager;
     }
 

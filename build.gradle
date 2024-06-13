@@ -52,7 +52,7 @@ tasks {
     shadowJar {
         relocate 'de.tr7zw.changeme.nbtapi', 'org.blisle.hxxniverskeycard.nbtapi'
         archiveClassifier.set('')
-        archiveFileName.set('hxxnivers_key_card.jar')
+        archiveFileName.set('HxxniversKeyCard.jar')
         destinationDirectory.set(file('C:\\Users\\wingk\\Desktop\\server-buckit\\plugins'))
     }
 

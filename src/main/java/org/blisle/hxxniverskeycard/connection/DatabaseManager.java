@@ -1,17 +1,17 @@
 package org.blisle.hxxniverskeycard.connection;
 
-import org.blisle.hxxniverskeycard.Hxxnivers_key_card;
+import org.blisle.hxxniverskeycard.HxxniversKeyCard;
 import org.bukkit.Location;
-import org.bukkit.block.BlockFace;
 
 import java.io.File;
 import java.sql.*;
+import java.util.UUID;
 
-public class SQLiteDatabaseManager {
+public class DatabaseManager {
     private Connection connection;
-    private final Hxxnivers_key_card plugin;
+    private final HxxniversKeyCard plugin;
 
-    public SQLiteDatabaseManager(Hxxnivers_key_card plugin) {
+    public DatabaseManager(HxxniversKeyCard plugin) {
         this.plugin = plugin;
     }
 
@@ -63,6 +63,23 @@ public class SQLiteDatabaseManager {
         }
     }
 
+    public void insertPlayer(UUID playerId, String playerName) {
+        String insertMember = "INSERT INTO member (uuid, name, role_id) SELECT ?, ?, ? WHERE NOT EXISTS (" +
+                "SELECT 1 FROM member " +
+                "WHERE uuid = ?" +
+                ");";
+        try (Connection connection = connect();
+             PreparedStatement statement = connection.prepareStatement(insertMember)) {
+            statement.setString(1, playerId.toString());
+            statement.setString(2, playerName);
+            statement.setInt(3, 1);
+            statement.setString(4, playerId.toString());
+            statement.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private void insertDefaultRoles() throws SQLException {
         String[] defaultRoles = {"시민", "경찰", "시청직원", "회사원", "은행원", "국회의원", "군인", "훈련병", "사업가", "vip"};
 
@@ -75,6 +92,86 @@ public class SQLiteDatabaseManager {
                 statement.setString(1, role);
                 statement.setString(2, role);
                 statement.executeUpdate();
+            }
+        }
+    }
+
+    public boolean roleExists(String role) throws SQLException {
+        String checkRole = "SELECT 1 FROM role WHERE name = ?;";
+        try (Connection connection = connect();
+             PreparedStatement statement = connection.prepareStatement(checkRole)) {
+            statement.setString(1, role);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next();
+            }
+        } catch (SQLException e) {
+            throw new SQLException(e.getMessage());
+        }
+    }
+
+    public boolean keyCardExists(String name, String roleName) throws SQLException {
+        String getRoleIdQuery = "SELECT id FROM role WHERE name = ?";
+        String checkKeyCardQuery = "SELECT 1 FROM keycard WHERE name = ? AND role_id = ?";
+
+        try (Connection connection = connect();
+             PreparedStatement getRoleIdStmt = connection.prepareStatement(getRoleIdQuery);
+             PreparedStatement checkKeyCardStmt = connection.prepareStatement(checkKeyCardQuery)) {
+
+            getRoleIdStmt.setString(1, roleName);
+            try (ResultSet rsRole = getRoleIdStmt.executeQuery()) {
+                if (rsRole.next()) {
+                    int roleId = rsRole.getInt("id");
+                    checkKeyCardStmt.setString(1, name);
+                    checkKeyCardStmt.setInt(2, roleId);
+                    try (ResultSet rsKeyCard = checkKeyCardStmt.executeQuery()) {
+                        return rsKeyCard.next();
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new SQLException(e.getMessage(), e);
+        }
+        return false;
+    }
+
+    public void insertRole(String role) throws SQLException {
+        String insertRole = "INSERT INTO role (name) SELECT ? WHERE NOT EXISTS (" +
+                "SELECT 1 FROM role " +
+                "WHERE name = ?" +
+                ");";
+        try (Connection connection = connect();
+             PreparedStatement statement = connection.prepareStatement(insertRole)) {
+            statement.setString(1, role);
+            statement.setString(2, role);
+            statement.executeUpdate();
+        } catch (SQLException e) {
+            throw new SQLException(e.getMessage());
+        }
+    }
+
+    public void insertKeyCard(String name, String roleName) throws SQLException {
+        String getRoleIdQuery = "SELECT id FROM role WHERE name = ?";
+        String insertKeyCard = "INSERT INTO keycard (name, role_id) SELECT ?, ? WHERE NOT EXISTS (" +
+                "SELECT 1 FROM keycard " +
+                "WHERE name = ?" +
+                "AND role_id = ?" +
+                ");";
+        try (Connection connection = connect();
+             PreparedStatement insertKeyCardStmt = connection.prepareStatement(insertKeyCard);
+             PreparedStatement getRoleIdStmt = connection.prepareStatement(getRoleIdQuery)) {
+
+            getRoleIdStmt.setString(1, roleName);
+            try (ResultSet rsRole = getRoleIdStmt.executeQuery()) {
+                if (rsRole.next()) {
+                    int roleId = rsRole.getInt("id");
+                    insertKeyCardStmt.setString(1, name);
+                    insertKeyCardStmt.setInt(2, roleId);
+                    insertKeyCardStmt.setString(3, name);
+                    insertKeyCardStmt.setInt(4, roleId);
+                    insertKeyCardStmt.executeUpdate();
+                } else throw new SQLException();
+            } catch (SQLException e) {
+                throw new SQLException("등록되어 있지 않은 역할입니다.");
             }
         }
     }
@@ -113,7 +210,7 @@ public class SQLiteDatabaseManager {
         }
     }
 
-    public void insertDoorData(Location placedLocation, Location aboveLocation, String permission){
+    public void insertDoorData(Location placedLocation, Location aboveLocation, String permission) {
         String insertDoorQuery = "INSERT INTO doors (name, x, y, z, permission) VALUES (?, ?, ?, ?, ?)";
 
         try (Connection connection = connect();
@@ -148,6 +245,35 @@ public class SQLiteDatabaseManager {
             e.printStackTrace();
         }
     }
+
+    public boolean hasPermission(String permission, String roleName) throws SQLException {
+        String getRoleIdQuery = "SELECT id FROM role WHERE name = ?";
+        String getDoorRolesQuery = "SELECT role_id FROM keycard WHERE name = ?";
+
+        try (Connection connection = connect();
+             PreparedStatement getRoleIdStmt = connection.prepareStatement(getRoleIdQuery);
+             PreparedStatement getDoorRolesStmt = connection.prepareStatement(getDoorRolesQuery)) {
+
+            getRoleIdStmt.setString(1, roleName);
+            ResultSet roleRs = getRoleIdStmt.executeQuery();
+            if (!roleRs.next()) {
+                return false;
+            }
+            int roleId = roleRs.getInt("id");
+
+            getDoorRolesStmt.setString(1, permission);
+            ResultSet doorRolesRs = getDoorRolesStmt.executeQuery();
+            while (doorRolesRs.next()) {
+                if (doorRolesRs.getInt("role_id") == roleId) {
+                    return true;
+                }
+            }
+            return false;
+        } catch (SQLException e) {
+            throw new SQLException(e.getMessage());
+        }
+    }
+
 
     public void disconnect() throws SQLException {
         if (connection != null && !connection.isClosed()) {
