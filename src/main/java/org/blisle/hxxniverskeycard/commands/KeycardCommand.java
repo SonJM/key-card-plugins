@@ -110,14 +110,6 @@ public class KeycardCommand implements CommandExecutor {
                 nbtItem2.applyNBT(itemInHand2);
                 player.sendMessage("손에 들고 있는 아이템이 " + permission2 + " 키카드로 등록됨.");
                 break;
-
-//              Todo: 작지서에 내용 추가 요구
-//            case "아이템설정":
-//                player.sendMessage("키카드 아이템 설정됨.");
-//                break;
-//            default:
-//                player.sendMessage("키카드 명령어: /키카드 [생성|철문|등록|아이템설정]");
-//                break;
         }
 
         return true;
